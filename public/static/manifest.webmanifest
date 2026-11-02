@@ -1,0 +1,16 @@
+{
+  "name": "TriAI",
+  "short_name": "TriAI",
+  "description": "Claude·GPT·Gemini·로컬 AI를 한곳에서",
+  "lang": "ko",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#EEF1F5",
+  "theme_color": "#EEF1F5",
+  "icons": [
+    {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "/static/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

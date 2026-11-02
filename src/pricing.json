@@ -1,0 +1,113 @@
+{
+ "_설명": "100만 토큰당 달러(USD). 2026년 9월 기준 추정치 — 실제 요금은 각 회사 가격 페이지에서 꼭 확인하고 고쳐 쓰세요. 여기 없는 모델은 비용이 '?'로 표시됩니다.",
+ "claude-haiku-4-5-20251001": {
+  "input": 1.0,
+  "output": 5.0
+ },
+ "claude-sonnet-5-5": {
+  "input": 2.0,
+  "output": 10.0,
+  "cached_input": 0.1
+ },
+ "claude-opus-5-5": {
+  "input": 4.0,
+  "output": 20.0,
+  "cached_input": 0.2
+ },
+ "gpt-5.6-luna": {
+  "input": 0.2,
+  "output": 1.2
+ },
+ "gpt-5.6-terra": {
+  "input": 2.0,
+  "output": 12.0
+ },
+ "gpt-5.6-sol": {
+  "input": 4.0,
+  "output": 20.0
+ },
+ "gemini-3.8-flash": {
+  "input": 0.75,
+  "output": 3.75
+ },
+ "gemini-3.1-pro-preview": {
+  "input": 2.0,
+  "output": 12.0
+ },
+ "@cf/openai/gpt-oss-20b": {
+  "input": 0.2,
+  "output": 0.3
+ },
+ "@cf/meta/llama-3.1-8b-instruct-fp8-fast": {
+  "input": 0.045,
+  "output": 0.384
+ },
+ "_설명_cloudflare": "Cloudflare는 하루 10,000 뉴런까지 무료 (gpt-oss-20b 입력 약 50만 토큰어치). TriAI는 무료분도 가격표대로 계산해서 실제 청구보다 많이 보일 수 있어요",
+ "claude-haiku-5-5": {
+  "input": 0.1,
+  "output": 0.5,
+  "cached_input": 0.01
+ },
+ "_설명_claude": "2026-10 공식 가격 (100만 토큰당 USD). Haiku 5.5는 질문이 10만 토큰을 넘으면 입력 0.5·출력 2.5",
+ "@cf/openai/gpt-oss-120b": {
+  "input": 0.35,
+  "output": 0.75
+ },
+ "@cf/zai-org/glm-5.3": {
+  "input": 1.4,
+  "output": 4.4
+ },
+ "@cf/zai-org/glm-5.3-flash": {
+  "input": 0.15,
+  "output": 0.5
+ },
+ "@cf/moonshotai/kimi-k2.7-code": {
+  "input": 0.95,
+  "output": 4.0
+ },
+ "@cf/moonshotai/kimi-k2.6": {
+  "input": 0.95,
+  "output": 4.0
+ },
+ "@cf/deepseek-ai/deepseek-v4-pro-0813": {
+  "input": 1.32,
+  "output": 3.96
+ },
+ "@cf/deepseek-ai/deepseek-v4.1-flash-1017": {
+  "input": 0.3,
+  "output": 1.2
+ },
+ "@cf/qwen/qwen3.8-27b": {
+  "input": 0.45,
+  "output": 3.2
+ },
+ "@cf/meta/llama-4-scout-17b-16e-instruct": {
+  "input": 0.27,
+  "output": 0.85
+ },
+ "@cf/mistralai/mistral-small-3.1-24b-instruct": {
+  "input": 0.351,
+  "output": 0.555
+ },
+ "@cf/google/gemma-4-26b-a4b-it": {
+  "input": 0.1,
+  "output": 0.3
+ },
+ "@cf/qwen/qwen2.5-coder-32b-instruct": {
+  "input": 0.66,
+  "output": 1.0
+ },
+ "@cf/qwen/qwq-32b": {
+  "input": 0.66,
+  "output": 1.0
+ },
+ "@cf/meta/llama-3.3-70b-instruct-fp8-fast": {
+  "input": 0.293,
+  "output": 2.253
+ },
+ "@cf/meta/llama-3.2-11b-vision-instruct": {
+  "input": 0.049,
+  "output": 0.676
+ },
+ "_설명_cloudflare_2026_10": "Cloudflare 공식 가격 (100만 토큰당 USD). 하루 1만 뉴런(약 0.11달러어치)까지 무료"
+}

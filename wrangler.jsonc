@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "triai-app",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "directory": "./public", "binding": "ASSETS", "not_found_handling": "none", "html_handling": "none", "run_worker_first": true },
+  "d1_databases": [{ "binding": "DB", "database_name": "triai", "database_id": "33f555b8-7012-42fe-9808-ec63d45b3780", "migrations_dir": "migrations" }],
+  "kv_namespaces": [{ "binding": "KV", "id": "e3e715b0113e45428aec8e9d26f08319" }],
+  "vars": { "TRIAI_PUBLIC": "1" },
+  "observability": { "enabled": true }
+}

@@ -1,0 +1,11 @@
+import { chromium } from "playwright";
+const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1280, height: 860 } }); const p = await ctx.newPage();
+const errs = []; p.on("pageerror", e => errs.push("pageerror: " + e.message)); p.on("console", m => { if (m.type() === "error") errs.push("console: " + m.text()); });
+p.on("response", r => { if (r.status() >= 400 && !r.url().includes("/gw/login")) errs.push(`http ${r.status()} ${r.url()}`); });
+await p.goto("http://127.0.0.1:8787/gw/login"); await p.fill("#u", "kuro"); await p.fill("#p", "password123"); await p.click("button");
+await p.waitForURL("http://127.0.0.1:8787/"); await p.waitForTimeout(1500);
+await p.screenshot({ path: "/home/claude/triai-workers/shot_home.png" });
+const ta = p.locator("textarea").first(); await ta.fill("로켓 노즐 설명해줘"); await ta.press("Enter");
+await p.waitForTimeout(3500); await p.screenshot({ path: "/home/claude/triai-workers/shot_chat.png", fullPage: false });
+console.log("errors:", errs.length ? errs.join("\n") : "none");
+await b.close();

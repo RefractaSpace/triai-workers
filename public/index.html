@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>TriAI</title>
+<link rel="manifest" href="/static/manifest.webmanifest">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="TriAI">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M16 5 28 26H4Z' fill='none' stroke='%231D1D1F' stroke-width='3' stroke-linejoin='round'/></svg>">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<link rel="stylesheet" href="/static/ui/app.css">
+</head>
+<body>
+
+<div class="app">
+  <!-- 왼쪽: 대화 목록 -->
+  <aside class="side" id="side" aria-label="대화 목록">
+    <div class="side-top">
+      <button class="mark" id="home" aria-label="새 대화">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path class="tri" d="M12 3.5 21 19.5H3Z"/><circle cx="12" cy="3.5" r="2.2" data-p="claude"/><circle cx="3" cy="19.5" r="2.2" data-p="gpt"/><circle cx="21" cy="19.5" r="2.2" data-p="gemini"/></svg>
+        <span>TriAI</span>
+      </button>
+      <button class="icon" id="sideClose" aria-label="목록 닫기"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+    </div>
+    <button class="new-chat" id="newChat"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>새 대화</button>
+    <label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg><input id="searchIn" type="search" placeholder="검색" aria-label="대화 검색"></label>
+    <nav class="side-nav">
+      <button data-go="projects"><svg viewBox="0 0 24 24"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/></svg>프로젝트</button>
+      <button data-go="sensors"><svg viewBox="0 0 24 24"><path d="M10 14.5V5a2 2 0 1 1 4 0v9.5a4 4 0 1 1-4 0Z"/><path d="M12 11v6"/></svg>센서</button>
+      <button data-go="artifacts"><svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M3.5 9h17"/></svg>아티팩트</button>
+    </nav>
+    <div class="convs" id="convs" role="list"></div>
+    <div class="side-foot">
+      <button class="me" id="meBtn"><span class="avatar" id="avatar">?</span><span class="me-t"><b id="meName">…</b><small id="spend">오늘 $0.00</small></span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <!-- 가운데 -->
+  <main class="main" id="main">
+    <header class="top">
+      <button class="icon" id="sideOpen" aria-label="대화 목록 열기"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+      <div class="top-title" id="topTitle"></div>
+      <div class="top-act" id="topAct"></div>
+    </header>
+
+    <section class="view" id="chatView">
+      <div class="scroller" id="scroller">
+        <div class="hello" id="hello">
+          <h1 id="helloText">무엇이든 물어보세요</h1>
+          <p id="helloSub"></p>
+          <div class="starters" id="starters"></div>
+        </div>
+        <div class="thread" id="thread"></div>
+        <div class="tail"></div>
+      </div>
+
+      <form class="composer" id="composer" autocomplete="off">
+        <div class="ctx" id="ctxRow" hidden></div>
+        <div class="attach" id="attachRow" hidden></div>
+        <textarea id="input" rows="1" placeholder="메시지 보내기" aria-label="메시지"></textarea>
+        <div class="c-bar">
+          <button type="button" class="icon" id="attachBtn" aria-label="파일 첨부" title="사진·글 파일 첨부"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+          <button type="button" class="pill" id="pickBtn" aria-haspopup="menu"><i class="dot" id="pickDot"></i><span id="pickLabel">자동</span><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg></button>
+          <button type="button" class="pill ghost" id="optBtn" aria-haspopup="menu"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span id="optLabel">옵션</span></button>
+          <span class="grow"></span>
+          <span class="est" id="est"></span>
+          <button type="submit" class="send" id="send" aria-label="보내기"><svg viewBox="0 0 24 24"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg></button>
+        </div>
+        <input type="file" id="fileIn" multiple hidden accept="image/*,.txt,.md,.csv,.json,.py,.js,.ts,.tsx,.jsx,.html,.css,.c,.cpp,.h,.java,.kt,.go,.rs,.sql,.yaml,.yml,.xml,.log">
+      </form>
+    </section>
+
+    <section class="view page" id="pageView" hidden></section>
+  </main>
+
+  <!-- 오른쪽: 아티팩트 -->
+  <aside class="art" id="art" aria-label="아티팩트" hidden>
+    <header class="art-head">
+      <div class="art-t"><b id="artTitle"></b><small id="artKind"></small></div>
+      <div class="art-ver" id="artVer" hidden><button class="icon" data-ver="-1" aria-label="이전 버전"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button><span></span><button class="icon" data-ver="1" aria-label="다음 버전"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button></div>
+      <div class="seg" id="artTabs" role="tablist"><button data-tab="view" class="on" role="tab">미리보기</button><button data-tab="code" role="tab">코드</button></div>
+      <div class="art-act">
+        <button class="icon" id="artCopy" aria-label="코드 복사" title="코드 복사"><svg viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5"/></svg></button>
+        <button class="icon" id="artDl" aria-label="내려받기" title="내려받기"><svg viewBox="0 0 24 24"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg></button>
+        <button class="icon" id="artShare" aria-label="공개 링크" title="공개 링크 만들기"><svg viewBox="0 0 24 24"><path d="M12 15V4m0 0L8 8m4-4 4 4"/><path d="M6 12v6.5A1.5 1.5 0 0 0 7.5 20h9a1.5 1.5 0 0 0 1.5-1.5V12"/></svg></button>
+        <button class="icon" id="artFull" aria-label="크게 보기" title="크게 보기"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+        <button class="icon" id="artClose" aria-label="닫기"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
+    </header>
+    <div class="art-err" id="artErr" hidden role="alert"><span id="artErrMsg"></span><button class="btn small" id="artFix">고쳐 달라고 하기</button><button class="icon" id="artErrX" aria-label="닫기"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div class="art-body"><iframe id="artFrame" sandbox="allow-scripts allow-modals" title="아티팩트 미리보기"></iframe><pre class="art-code" id="artCode" hidden></pre></div>
+  </aside>
+</div>
+
+<div class="menu" id="menu" role="menu" hidden></div>
+<dialog class="sheet" id="sheet"></dialog>
+<dialog class="sheet" id="askSheet"></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="/static/ui/base.js"></script>
+<script src="/static/js/chart.js"></script>
+<script src="/static/ui/render.js"></script>
+<script src="/static/ui/artifact.js"></script>
+<script src="/static/ui/chat.js"></script>
+<script src="/static/ui/tools.js"></script>
+<script src="/static/ui/side.js"></script>
+<script src="/static/ui/pages.js"></script>
+<script src="/static/ui/sheets.js"></script>
+<script src="/static/ui/main.js"></script>
+</body>
+</html>

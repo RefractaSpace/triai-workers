@@ -1,0 +1,48 @@
+import sys
+from playwright.sync_api import sync_playwright
+OUT = sys.argv[1] if len(sys.argv) > 1 else "."
+errs = []
+def watch(p):
+    p.on("pageerror", lambda e: errs.append("pageerror: " + str(e)))
+    p.on("console", lambda m: errs.append("console: " + m.text) if m.type == "error" else None)
+    p.on("response", lambda r: errs.append(f"http {r.status} {r.url}") if r.status >= 400 and "/gw/login" not in r.url else None)
+with sync_playwright() as pw:
+    b = pw.chromium.launch()
+    ctx = b.new_context(viewport={"width": 1360, "height": 860})
+    p = ctx.new_page(); watch(p)
+    p.goto("http://127.0.0.1:8787/gw/login"); p.fill("#u", "kuro"); p.fill("#p", "newpass-123"); p.click("button")
+    p.wait_for_url("http://127.0.0.1:8787/"); p.wait_for_timeout(1200)
+    p.screenshot(path=f"{OUT}/1_home.png")
+    p.click("#pickBtn"); p.wait_for_timeout(200); p.screenshot(path=f"{OUT}/2_pick.png")
+    p.locator(".mi", has_text="모두 비교").click()
+    p.fill("#input", "로켓 노즐이 왜 종 모양인지 설명해줘"); p.keyboard.press("Enter")
+    p.wait_for_timeout(600); p.screenshot(path=f"{OUT}/3_stream.png")
+    p.wait_for_selector(".a-foot", timeout=20000); p.wait_for_timeout(800)
+    p.screenshot(path=f"{OUT}/4_done.png")
+    tabs = p.locator(".tab").count(); print("tabs", tabs)
+    if tabs > 1: p.locator(".tab").nth(1).click(); p.wait_for_timeout(200)
+    p.locator("[data-act=up]").first.click(); p.wait_for_timeout(500)
+    p.click("#pickBtn"); p.locator(".mi", has_text="Claude").first.click()
+    p.fill("#input", "html 아티팩트로 계산기 만들어줘"); p.keyboard.press("Enter")
+    p.wait_for_selector(".art-card[data-art-id]", timeout=20000); p.wait_for_timeout(2500)
+    print("art open:", p.is_visible("#art"))
+    p.screenshot(path=f"{OUT}/5_art.png")
+    p.click("#artClose"); p.click("#meBtn"); p.wait_for_timeout(500); p.screenshot(path=f"{OUT}/6_settings.png")
+    p.locator(".sh-nav [data-t=memory]").click(); p.wait_for_timeout(500); p.fill("#memIn", "단위는 SI로"); p.click("#memAdd"); p.wait_for_timeout(600)
+    p.screenshot(path=f"{OUT}/7_memory.png")
+    p.keyboard.press("Escape")
+    p.click(".side-nav [data-go=projects]"); p.wait_for_timeout(700)
+    if p.locator(".card[data-pid]").count() == 0:
+        p.click("#pjNew"); p.fill("#askIn", "하이브리드 로켓"); p.keyboard.press("Enter"); p.wait_for_timeout(800)
+    else:
+        p.locator(".card[data-pid]").first.click(); p.wait_for_timeout(800)
+    p.screenshot(path=f"{OUT}/8_project.png")
+    p.click(".side-nav [data-go=artifacts]"); p.wait_for_timeout(900); p.screenshot(path=f"{OUT}/9_artifacts.png")
+    m = b.new_context(viewport={"width": 390, "height": 844}, color_scheme="dark", storage_state=ctx.storage_state())
+    q = m.new_page(); watch(q)
+    q.goto("http://127.0.0.1:8787/"); q.wait_for_timeout(1200); q.locator("#convs .conv").first.evaluate("e=>0")
+    q.evaluate("document.querySelector('#convs .conv') && openConv(document.querySelector('#convs .conv').dataset.id)"); q.wait_for_timeout(1000)
+    q.screenshot(path=f"{OUT}/10_mobile_dark.png")
+    q.click("#sideOpen"); q.wait_for_timeout(400); q.screenshot(path=f"{OUT}/11_mobile_side.png")
+    print("errors:", "\n".join(errs) if errs else "none")
+    b.close()
