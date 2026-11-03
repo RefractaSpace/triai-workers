@@ -253,7 +253,7 @@ export async function runOne(ctx: Ctx, job: RunJob, system: string, maxTokens: n
     if (!res.text.trim() && !res.stopped && !res.pending) res.error = "빈 답변이에요. 설정에서 최대 토큰을 늘려보세요.";
   } catch (e: any) {
     if (signal.aborted) res.stopped = true;
-    else { const raw = `${e?.name || "Error"}: ${e?.message || e}`; res.error = `${P.friendlyError(raw)} — ${raw.slice(0, 300)}`; }
+    else { const raw = P.redact(`${e?.name || "Error"}: ${e?.message || e}`); res.error = `${P.friendlyError(raw)} — ${raw.slice(0, 300)}`; }
   }
   if ((res.thinking || "").length > 20000) res.thinking = res.thinking!.slice(0, 20000) + "\n…(생략)";
   res.sec = Math.round((Date.now() - t0) / 10) / 100;

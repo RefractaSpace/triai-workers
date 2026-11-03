@@ -241,6 +241,13 @@ export async function listModels(env: Env, p: string): Promise<string[]> {
   catch { return []; }
 }
 
+/** 오류 글에서 비밀을 지움 — 회사 API가 돌려준 오류에 주소(계정 ID 자리)·키가 섞여 나와 화면에 보이는 일 방지 */
+export function redact(s: string): string {
+  return String(s)
+    .replace(/\/accounts\/[^/\s"']+/g, "/accounts/***")
+    .replace(/\b(cfut_|cfat_|sk-ant-[a-z]+-|sk-proj-|sk-|AIza|ghp_|github_pat_|xox[bp]-)[A-Za-z0-9_\-]{6,}/g, "$1***")
+    .replace(/\b[A-Za-z0-9_\-]{40,}\b/g, "***");
+}
 export function friendlyError(raw: string): string {
   const low = raw.toLowerCase();
   if (low.includes("cf_quota")) return "Cloudflare 무료 한도 소진 (오전 9시에 다시 채워짐)";

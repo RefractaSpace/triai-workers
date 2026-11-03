@@ -29,7 +29,7 @@ const RUNS = new Map<string, AbortController>();   // 실행 번호 → 중지 (
 app.onError((err, c) => {
   if (err instanceof HTTPException) return c.json({ detail: err.message }, err.status);
   console.error(err);
-  return c.json({ detail: `서버 오류: ${String(err).slice(0, 200)}` }, 500);
+  return c.json({ detail: `서버 오류: ${P.redact(String(err)).slice(0, 200)}` }, 500);
 });
 
 // ── 보안 헤더 · 본문 크기 · 로그인 문지기 · 속도 제한 ──
