@@ -40,7 +40,7 @@ export async function create(env: Env, user: string, req: any, allowedForUser: s
   let provs = (Array.isArray(req?.providers) ? req.providers : ["cf"]).map(String).filter((p: string) => (API_PROVIDERS as readonly string[]).includes(p));
   if (allowedForUser) provs = provs.filter((p: string) => allowedForUser.includes(p));
   if (!provs.length) throw new HTTPException(400, { message: "쓸 수 있는 AI를 하나 이상 골라 주세요 (내 계정에 허락된 것만)" });
-  const limit = Math.max(0.01, Math.min(Number(req?.daily_limit ?? 1) || 1, 20));
+  const limit = Math.max(0.01, Math.min(Number(req?.daily_limit ?? 1) || 1, 100));
   const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM api_tokens WHERE user=?").bind(user).first<{ n: number }>();
   if ((n?.n || 0) >= 10) throw new HTTPException(400, { message: "토큰은 10개까지예요. 안 쓰는 것을 지워 주세요" });
   const id = newId(10), token = "triai_" + newId(24) + newId(24);

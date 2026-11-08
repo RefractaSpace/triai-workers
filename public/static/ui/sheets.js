@@ -221,7 +221,7 @@ const PANES = {
       <div class="group" style="padding:12px 16px;display:grid;gap:10px">
         <input class="inp" id="tkName" placeholder="토큰 이름 (예: 다른 채팅용)" maxlength="40">
         <div style="display:flex;gap:14px;flex-wrap:wrap">${ok.length ? ok.map(c => `<label class="small"><input type="checkbox" name="tkp" value="${esc(c.key)}" ${c.key === "cf" ? "checked" : ""}> ${esc(c.name)}</label>`).join("") : `<span class="small muted">쓸 수 있는 AI가 없어요</span>`}</div>
-        <label class="small">하루 한도 (USD) <input class="inp" id="tkLim" type="number" min="0.01" max="20" step="0.01" value="1" style="width:100px"></label>
+        <label class="small">하루 한도 (USD) <input class="inp" id="tkLim" type="number" min="0.01" max="100" step="0.01" value="1" style="width:100px"></label>
         <button class="btn primary" id="tkNew">토큰 만들기</button>
       </div><div id="tkShow"></div>`;
     $("#tkNew", el).onclick = async () => {
