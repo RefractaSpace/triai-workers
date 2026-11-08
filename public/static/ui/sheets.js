@@ -1,7 +1,7 @@
 /* sheets.js — 설정 창: 일반 · 모델 · 기억 · 프리셋·스타일 · 모드 · 공유 링크 · 계정 */
 "use strict";
 
-const TABS = [["general", "일반"], ["models", "모델"], ["tools", "도구"], ["connections", "연결 (MCP)"], ["local", "로컬 모델"], ["agents", "에이전트 팀"], ["sensors", "센서 기기"], "-",
+const TABS = [["general", "일반"], ["models", "모델"], ["tools", "도구"], ["connections", "연결 (MCP)"], ["local", "로컬 모델"], ["agents", "에이전트 팀"], ["sensors", "센서 기기"], ["apitokens", "TriAI 토큰"], "-",
   ["memory", "기억"], ["presets", "프리셋·스타일"], ["modes", "모드"], "-", ["shares", "공유 링크"], ["account", "계정"]];
 
 function openSettings(tab = "general") {
@@ -209,6 +209,35 @@ const PANES = {
         const buf = new Uint8Array(await f.arrayBuffer()); let bin = ""; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
         const m = await sendJSON("/api/admin/firmware", "POST", { version: v, b64: btoa(bin) }); toast(`펌웨어 ${m.version} 올림 — 센서들이 1분 안에 받아요`); PANES.sensors(el);
       } catch (err) { fail(err); b.disabled = false; b.textContent = "올리기"; }
+    });
+  },
+
+  /* ── TriAI 토큰 (다른 채팅·프로그램에서 TriAI의 AI 쓰기) ── */
+  async apitokens(el) {
+    const [toks, cands] = await Promise.all([getJSON("/api/tokens"), getJSON("/api/candidates")]);
+    const ok = cands.filter(c => ["cf", "claude", "gpt", "gemini"].includes(c.key));
+    el.innerHTML = `<h3>TriAI 토큰</h3><p class="lead">다른 채팅(Claude 스킬 등)이나 프로그램에서 TriAI의 AI를 쓰는 열쇠예요. 진짜 Claude·Cloudflare 키는 TriAI 밖으로 안 나가고, 이 토큰만 써요. 토큰은 만들 때 <b>한 번만</b> 보여줘요 — 새면 바로 지우세요.</p>
+      <div class="group">${toks.length ? toks.map(t => row(esc(t.name), `${t.providers.map(esc).join(", ")} · 하루 $${Number(t.daily_limit).toFixed(2)} · ${t.last_used ? "마지막 사용 " + esc(t.last_used) : "아직 안 씀"}`, `<button class="btn small" data-del="${esc(t.id)}">지우기</button>`)).join("") : `<div class="list-empty">아직 없어요</div>`}</div>
+      <div class="group" style="padding:12px 16px;display:grid;gap:10px">
+        <input class="inp" id="tkName" placeholder="토큰 이름 (예: 다른 채팅용)" maxlength="40">
+        <div style="display:flex;gap:14px;flex-wrap:wrap">${ok.length ? ok.map(c => `<label class="small"><input type="checkbox" name="tkp" value="${esc(c.key)}" ${c.key === "cf" ? "checked" : ""}> ${esc(c.name)}</label>`).join("") : `<span class="small muted">쓸 수 있는 AI가 없어요</span>`}</div>
+        <label class="small">하루 한도 (USD) <input class="inp" id="tkLim" type="number" min="0.01" max="20" step="0.01" value="1" style="width:100px"></label>
+        <button class="btn primary" id="tkNew">토큰 만들기</button>
+      </div><div id="tkShow"></div>`;
+    $("#tkNew", el).onclick = async () => {
+      const providers = [...el.querySelectorAll("[name=tkp]:checked")].map(x => x.value);
+      try {
+        const r = await sendJSON("/api/tokens", "POST", { name: $("#tkName", el).value, providers, daily_limit: Number($("#tkLim", el).value) });
+        await PANES.apitokens(el);
+        $("#tkShow", el).innerHTML = `<div class="group" style="padding:12px 16px;border-color:var(--accent)"><b>'${esc(r.name)}' 토큰 — 지금만 보여요</b>
+          <p class="small muted" style="margin:6px 0 0">주소: <code>https://${esc(location.host)}/api/v1/chat</code></p>
+          <div class="keybox" id="tkVal">${esc(r.token)}</div><button class="btn small" id="tkCopy">복사</button></div>`;
+        $("#tkCopy", el).onclick = () => copyText(r.token, "복사했어요");
+      } catch (e) { fail(e); }
+    };
+    el.querySelectorAll("[data-del]").forEach(b => b.onclick = async () => {
+      if (!await ask("토큰 지우기", { msg: "이 토큰을 쓰는 곳은 바로 막혀요.", ok: "지우기", danger: true })) return;
+      try { await sendJSON(`/api/tokens/${b.dataset.del}`, "DELETE"); PANES.apitokens(el); } catch (e) { fail(e); }
     });
   },
 

@@ -65,7 +65,7 @@ export async function rateLimit(env: Env, kind: string, who: string, limit: numb
   if (Math.random() < 0.02) await env.DB.prepare("DELETE FROM rate WHERE exp < ?").bind(now).run();   // 가끔 청소
 }
 export const LIMITS = {
-  login: [10, 600], sensor: [120, 600], chat: [30, 60], upload: [60, 600], api: [600, 60], share: [20, 3600], public: [120, 60],
+  login: [10, 600], sensor: [120, 600], chat: [30, 60], upload: [60, 600], api: [600, 60], share: [20, 3600], public: [120, 60], v1: [40, 60],
 } as const satisfies Record<string, readonly [number, number]>;
 
 /** 감사 기록 */

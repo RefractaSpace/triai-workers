@@ -11,6 +11,7 @@ import { ChatReq, Target, askMore, checkBudget, ctxOf, execute, getCats, planReq
 import * as MCP from "./mcp";
 import * as AG from "./agents";
 import * as SN from "./sensors";
+import * as TK from "./apitokens";
 import { ownAnswer } from "./history";
 import * as SEC from "./security";
 import * as ART from "./artifacts";
@@ -40,6 +41,10 @@ app.use("*", async (c, next) => {
   if (path.startsWith("/s/")) { await SEC.rateLimit(c.env, "public", SEC.ip(c), ...SEC.LIMITS.public); return next(); }
   if ((path === "/api/sensor" && c.req.method === "POST") || (path === "/api/sensor/fw" && c.req.method === "GET")) {   // ESP32 센서: 로그인 대신 기기 열쇠
     await SEC.rateLimit(c.env, "sensor", SEC.ip(c), ...SEC.LIMITS.sensor);
+    return next();
+  }
+  if (path.startsWith("/api/v1/")) {   // 다른 채팅·프로그램: 로그인 대신 TriAI 토큰 (Bearer)
+    await SEC.rateLimit(c.env, "v1", SEC.ip(c), ...SEC.LIMITS.v1);
     return next();
   }
   if (PUBLIC.has(path)) {
@@ -347,6 +352,12 @@ app.delete("/api/mcp/:sid", async c => c.json(await MCP.remove(c.env, c.get("use
 // ── 집 센서 (ESP32) ──
 app.post("/api/sensor", async c => c.json(await SN.ingest(c.env, c.req.header("authorization"), await c.req.json().catch(() => ({})))));
 app.get("/api/sensor/fw", async c => SN.firmware(c.env, c.req.header("authorization")));
+// ── 다른 채팅에서 TriAI AI 쓰기 (TriAI 토큰) ──
+app.get("/api/v1/models", async c => c.json(await TK.models(c.env, c.req.header("authorization"))));
+app.post("/api/v1/chat", async c => c.json(await TK.chat(c.env, c.req.header("authorization"), await c.req.json().catch(() => ({})), c.req.raw.signal)));
+app.get("/api/tokens", async c => c.json(await TK.list(c.env, c.get("user").name)));
+app.post("/api/tokens", async c => { const u = c.get("user"); const r = await TK.create(c.env, u.name, await c.req.json().catch(() => ({})), u.providers); await SEC.audit(c.env, "token_create", { user: u.name, ip: SEC.ip(c), detail: r.name }); return c.json(r); });
+app.delete("/api/tokens/:id", async c => { const u = c.get("user"); const r = await TK.remove(c.env, u.name, c.req.param("id")); await SEC.audit(c.env, "token_delete", { user: u.name, ip: SEC.ip(c), detail: c.req.param("id") }); return c.json(r); });
 app.get("/api/sensors", async c => c.json({ devices: await SN.list(c.env, c.get("user").name), fw: await SN.fwMeta(c.env) }));
 app.post("/api/sensors", async c => { const u = c.get("user"); const r = await SN.create(c.env, u.name, (await c.req.json<any>()).name); await SEC.audit(c.env, "sensor_add", { user: u.name, ip: SEC.ip(c), detail: r.id }); return c.json(r); });
 app.patch("/api/sensors/:id", async c => c.json(await SN.rename(c.env, c.get("user").name, c.req.param("id"), (await c.req.json<any>()).name)));

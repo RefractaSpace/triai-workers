@@ -163,7 +163,7 @@ export async function checkBudget(ctx: Ctx, expected = 0): Promise<void> {
 }
 
 // ── 여러 AI 동시에 부르기: 이벤트를 한 줄(ndjson)씩 내보냄 ──
-async function* mockStream(_env: Env, model: string, messages: P.Msg[], _system: string, _max: number, o: P.GenOpts): AsyncGenerator<P.Ev> {
+export async function* mockStream(_env: Env, model: string, messages: P.Msg[], _system: string, _max: number, o: P.GenOpts): AsyncGenerator<P.Ev> {
   const q = messages[messages.length - 1]?.content || "";
   let words: string[];
   if (/^\[(도구 결과|실행 결과|웹 검색|MCP|그림|웹페이지|도구 오류)/.test(q)) words = `[가짜 ${model}] 도구 결과를 받았어요: ${q.split("\n").slice(1).join(" ").slice(0, 60)} 끝.`.split(" ");
