@@ -13,6 +13,7 @@ import { HTTPException } from "hono/http-exception";
 import type { Env } from "./env";
 import { DEFAULT_MODELS, hasKey } from "./env";
 import * as P from "./providers";
+import PRICING from "./pricing.json";
 import type { Provider } from "./env";
 import { addCost, newId, nowIso, spentToday, today } from "./db";
 import { getUser } from "./auth";
@@ -88,7 +89,12 @@ export async function chat(env: Env, header: string | undefined, body: any, sign
   const model = String(body?.model || DEFAULT_MODELS[prov as keyof typeof DEFAULT_MODELS]).slice(0, 120);
   const maxTok = Math.max(16, Math.min(Number(body?.max_tokens) || 2048, MAX_TOKENS_CAP));
   // 예산: 토큰 하루 한도 · 주인 하루 한도 · 전체 한도
-  const est = P.estimateCost(model, { in: Math.ceil(chars / 2), cached: 0, write: 0, out: maxTok }, prov) || 0;
+  const estRaw = P.estimateCost(model, { in: Math.ceil(chars / 2), cached: 0, write: 0, out: maxTok }, prov);
+  if (estRaw == null && prov !== "cf") {   // 가격표에 없는 유료 모델은 한도 계산이 안 되니 막음
+    const known = Object.keys(PRICING).filter(k => !k.startsWith("_") && k.startsWith(prov === "claude" ? "claude-" : prov === "gpt" ? "gpt-" : "gemini-"));
+    throw new HTTPException(400, { message: `'${model}'은 가격표에 없어서 한도를 계산할 수 없어요. 쓸 수 있는 모델: ${known.join(", ")}` });
+  }
+  const est = estRaw || 0;
   const tSpent = await tokSpent(env, tok.id);
   if (tSpent + est > tok.daily_limit) throw new HTTPException(402, { message: `이 토큰의 오늘 한도($${tok.daily_limit.toFixed(2)})에 닿았어요 (쓴 돈 $${tSpent.toFixed(4)}, 이번 예상 $${est.toFixed(4)})` });
   const oSpent = await spentToday(env, owner.name);
