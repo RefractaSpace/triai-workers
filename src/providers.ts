@@ -171,10 +171,20 @@ async function cfMarkExhausted(env: Env) {
 }
 function isCfQuota(e: unknown): boolean { const s = String(e).toLowerCase(); return ["neuron", "free allocation", "4006"].some(k => s.includes(k)); }
 
+const CF_FREE_FALLBACK = "@cf/openai/gpt-oss-120b";
 async function* streamCf(env: Env, model: string, messages: Msg[], system: string, maxTokens: number, o: GenOpts): AsyncGenerator<Ev> {
   if (await cfExhausted(env)) throw new Error(CF_QUOTA_MSG);
-  try { yield* streamCfRaw(env, model, messages, system, maxTokens, o); }
-  catch (e) { if (isCfQuota(e)) { await cfMarkExhausted(env); throw new Error(CF_QUOTA_MSG); } throw e; }
+  let started = false;
+  try { for await (const ev of streamCfRaw(env, model, messages, system, maxTokens, o)) { if (ev.t === "delta") started = true; yield ev; } }
+  catch (e) {
+    if (isCfQuota(e)) { await cfMarkExhausted(env); throw new Error(CF_QUOTA_MSG); }
+    // 무료 플랜에서 못 쓰는 모델(5035) → 기본 모델로 한 번만 다시
+    if (!started && String(e).includes("5035") && model !== CF_FREE_FALLBACK) {
+      yield { t: "think", d: `(${model}은 Workers 무료 플랜에서 못 써서 ${CF_FREE_FALLBACK}로 답해요)\n` };
+      yield* streamCfRaw(env, CF_FREE_FALLBACK, messages, system, maxTokens, o); return;
+    }
+    throw e;
+  }
 }
 async function* streamCfRaw(env: Env, model: string, messages: Msg[], system: string, maxTokens: number, o: GenOpts): AsyncGenerator<Ev> {
   const acc = (env.CLOUDFLARE_ACCOUNT_ID || "").trim();
@@ -218,7 +228,7 @@ async function* streamCfRaw(env: Env, model: string, messages: Msg[], system: st
       if (think) yield { t: "think", d: String(think) };
       if (d.content != null && d.content !== "") { got = true; yield { t: "delta", d: String(d.content) }; }
     }
-    if (typeof ch.response === "string" && ch.response) { got = true; yield { t: "delta", d: ch.response }; }   // 바인딩의 옛 모양 {"response":"…"}
+    if (!(ch.choices && ch.choices.length) && typeof ch.response === "string" && ch.response) { got = true; yield { t: "delta", d: ch.response }; }   // 바인딩의 옛 모양 {"response":"…"}
     if (!got) yield { t: "tick" };
     if (ch.error) throw new Error(`Cloudflare: ${JSON.stringify(ch.error).slice(0, 300)}`);
   }
