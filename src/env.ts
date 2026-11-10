@@ -2,6 +2,7 @@ export interface Env {
   DB: D1Database;
   KV: KVNamespace;
   ASSETS: Fetcher;
+  AI?: any;                    // Workers AI 바인딩 — 있으면 Cloudflare 토큰·계정 ID 없이 바로 씀
   ANTHROPIC_API_KEY?: string;
   ANTHROPIC_WORKSPACE_ID?: string;
   OPENAI_API_KEY?: string;
@@ -30,7 +31,7 @@ export function hasKey(env: Env, p: string): boolean {
   if (env.TRIAI_MOCK_AI && (p in KEY_NAMES || p === "agent")) return true;
   if (p === "agent") return !!env.ANTHROPIC_API_KEY;   // 콘솔 에이전트 팀 = Claude 키
   if (p === "local") return true;                      // 로컬 모델은 화면(내 컴퓨터)이 직접 부름
-  if (p === "cf") return !!(env.CLOUDFLARE_API_TOKEN && env.CLOUDFLARE_ACCOUNT_ID);
+  if (p === "cf") return !!env.AI || !!(env.CLOUDFLARE_API_TOKEN && env.CLOUDFLARE_ACCOUNT_ID);
   if (!(p in KEY_NAMES)) return false;
   return !!env[KEY_NAMES[p as Provider]];
 }

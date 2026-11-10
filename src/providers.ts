@@ -186,10 +186,28 @@ async function* streamCfRaw(env: Env, model: string, messages: Msg[], system: st
   const body: any = { model, messages: msgs, max_tokens: effort ? Math.max(maxTokens, DEEP_MAX_TOKENS) : maxTokens, stream: true,
     stream_options: { include_usage: true }, ...(effort ? { reasoning_effort: effort } : {}), ...(o.temperature != null ? { temperature: o.temperature } : {}), ...(o.top_p != null ? { top_p: o.top_p } : {}),
     ...(o.format === "json" ? { response_format: { type: "json_object" } } : {}) };
-  const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${acc}/ai/v1/chat/completions`, {
-    method: "POST", signal: o.signal, headers: { "content-type": "application/json", authorization: `Bearer ${env.CLOUDFLARE_API_TOKEN}` }, body: JSON.stringify(body),
-  });
-  if (!res.ok) await fail(res, "Cloudflare");
+  let res: Response;
+  if (env.AI) {   // 바인딩: 토큰·계정 ID 필요 없음
+    const { model: _m, stream_options: _so, ...inp } = body;
+    let out: any;
+    try { out = await env.AI.run(model, inp, { signal: o.signal }); }
+    catch (e: any) { throw new Error(`Cloudflare: ${String(e?.message || e).slice(0, 300)}`); }
+    if (out instanceof ReadableStream) res = new Response(out);
+    else {   // 스트림이 아니라 한 번에 온 경우
+      const text = out?.response ?? out?.choices?.[0]?.message?.content ?? (typeof out === "string" ? out : "");
+      const think = out?.choices?.[0]?.message?.reasoning_content;
+      if (think) yield { t: "think", d: String(think) };
+      if (text) yield { t: "delta", d: String(text) };
+      const u = out?.usage || {};
+      yield { t: "usage", u: { in: u.prompt_tokens || 0, cached: 0, write: 0, out: u.completion_tokens || 0 } };
+      return;
+    }
+  } else {
+    res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${acc}/ai/v1/chat/completions`, {
+      method: "POST", signal: o.signal, headers: { "content-type": "application/json", authorization: `Bearer ${env.CLOUDFLARE_API_TOKEN}` }, body: JSON.stringify(body),
+    });
+    if (!res.ok) await fail(res, "Cloudflare");
+  }
   let usage: any = null;
   for await (const ch of sse(res)) {
     if (ch.usage) usage = ch.usage;
@@ -200,6 +218,7 @@ async function* streamCfRaw(env: Env, model: string, messages: Msg[], system: st
       if (think) yield { t: "think", d: String(think) };
       if (d.content != null && d.content !== "") { got = true; yield { t: "delta", d: String(d.content) }; }
     }
+    if (typeof ch.response === "string" && ch.response) { got = true; yield { t: "delta", d: ch.response }; }   // 바인딩의 옛 모양 {"response":"…"}
     if (!got) yield { t: "tick" };
     if (ch.error) throw new Error(`Cloudflare: ${JSON.stringify(ch.error).slice(0, 300)}`);
   }
@@ -261,6 +280,10 @@ export function friendlyError(raw: string): string {
 export async function checkKey(env: Env, p: string): Promise<{ ok: boolean; msg: string; detail?: string }> {
   if (!hasKey(env, p)) return { ok: false, msg: missingMsg(p) };
   if (p === "cf") {
+    if (env.AI) {
+      try { await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8-fast", { messages: [{ role: "user", content: "ok" }], max_tokens: 1 }); return { ok: true, msg: "정상 · Workers AI 바인딩 연결됨 (토큰 필요 없음)" }; }
+      catch (e) { return { ok: false, msg: "Workers AI 바인딩 오류", detail: redact(String(e)).slice(0, 300) }; }
+    }
     try {
       const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${(env.CLOUDFLARE_ACCOUNT_ID || "").trim()}/ai/models/search?per_page=1`,
         { headers: { authorization: `Bearer ${env.CLOUDFLARE_API_TOKEN}` } });

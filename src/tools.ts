@@ -190,6 +190,11 @@ export async function makeImage(env: Env, user: string, prompt: string): Promise
   if (env.TRIAI_MOCK_AI) {   // 가짜: 1×1 PNG
     return putUpload(env, user, "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "image/png");
   }
+  if (env.AI) {   // 바인딩: 토큰 필요 없음
+    const out: any = await env.AI.run("@cf/black-forest-labs/flux-1-schnell", { prompt, steps: 6 });
+    if (!out?.image) throw new Error("그림 만들기 실패 (Workers AI 바인딩이 그림을 안 돌려줌)");
+    return putUpload(env, user, out.image, P.imgMime(out.image));
+  }
   if (!env.CLOUDFLARE_API_TOKEN || !env.CLOUDFLARE_ACCOUNT_ID) throw new Error("그림을 만들려면 Cloudflare 비밀값이 필요해요");
   const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/black-forest-labs/flux-1-schnell`, {
     method: "POST", headers: { authorization: `Bearer ${env.CLOUDFLARE_API_TOKEN}`, "content-type": "application/json" },
