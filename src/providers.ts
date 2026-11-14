@@ -21,9 +21,9 @@ export const CF_MODELS = [
   "@cf/google/gemma-4-26b-a4b-it", "@cf/qwen/qwen2.5-coder-32b-instruct", "@cf/qwen/qwq-32b",
   "@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/meta/llama-3.1-8b-instruct-fp8-fast",
 ];
+// 2026-11-14 운영 서버 바인딩으로 실제 그림 시험: scout·mistral-small·qwen3.8 ✅ / glm-5.3-flash·deepseek-v4.1-flash·kimi-k2.6은 "NO IMAGE"(그림을 못 받음) → 뺌
 export const CF_VISION = new Set(["@cf/meta/llama-4-scout-17b-16e-instruct", "@cf/mistralai/mistral-small-3.1-24b-instruct",
-  "@cf/meta/llama-3.2-11b-vision-instruct", "@cf/zai-org/glm-5.3-flash", "@cf/deepseek-ai/deepseek-v4.1-flash-1017",
-  "@cf/qwen/qwen3.8-27b", "@cf/moonshotai/kimi-k2.6"]);
+  "@cf/meta/llama-3.2-11b-vision-instruct", "@cf/qwen/qwen3.8-27b"]);
 
 export function canSee(p: string, model: string): boolean {
   return p === "claude" || p === "gpt" || p === "gemini" || (p === "cf" && CF_VISION.has(model));
