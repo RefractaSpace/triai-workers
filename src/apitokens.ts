@@ -23,6 +23,23 @@ import { mockStream } from "./chat";
 export const API_PROVIDERS = ["cf", "claude", "gpt", "gemini"] as const;
 const MAX_TOKENS_CAP = 8192;
 const MAX_INPUT_CHARS = 200_000;
+const MAX_IMAGES = 1, MAX_IMAGE_BYTES = 300 * 1024, IMG_TOKENS_EST = 1600;
+export const CF_VISION_DEFAULT = "@cf/meta/llama-4-scout-17b-16e-instruct";
+const visionModels = (prov: string) => prov === "cf" ? [CF_VISION_DEFAULT, ...[...P.CF_VISION].filter(m => m !== CF_VISION_DEFAULT && !CF_VISION_HIDDEN.has(m))] : ["(이 provider의 모든 모델)"];
+const CF_VISION_HIDDEN = new Set(["@cf/meta/llama-3.2-11b-vision-instruct"]);   // 사용 조건 동의('agree')가 먼저 필요한 모델
+
+/** 그림 조각 확인 → base64 문자열 */
+function checkImage(part: any): string {
+  const mt = String(part?.media_type || "");
+  if (mt !== "image/jpeg" && mt !== "image/png") throw new HTTPException(400, { message: "그림은 image/jpeg 또는 image/png만" });
+  const data = String(part?.data || "").replace(/\s+/g, "");
+  if (!data || data.startsWith("data:") || !/^[A-Za-z0-9+/]+={0,2}$/.test(data)) throw new HTTPException(400, { message: "그림 data는 'data:' 머리말 없는 base64여야 해요" });
+  const bytes = Math.floor(data.length * 3 / 4) - (data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0);
+  if (bytes > MAX_IMAGE_BYTES) throw new HTTPException(400, { message: `그림이 너무 커요 (${Math.round(bytes / 1024)}KB, ${MAX_IMAGE_BYTES / 1024}KB까지)` });
+  const real = P.imgMime(data);
+  if (real !== mt) throw new HTTPException(400, { message: `media_type(${mt})과 실제 그림(${real})이 달라요` });
+  return data;
+}
 
 const hex = (b: ArrayBuffer) => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
 const sha256 = async (s: string) => hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
@@ -71,7 +88,9 @@ const tokSpent = async (env: Env, id: string) => Number(await env.KV.get(tokKey(
 
 export async function models(env: Env, header: string | undefined) {
   const { provs } = await auth(env, header);
-  return { providers: provs.filter(p => hasKey(env, p)).map(p => ({ provider: p, default_model: DEFAULT_MODELS[p as keyof typeof DEFAULT_MODELS] })) };
+  return { providers: provs.filter(p => hasKey(env, p)).map(p => ({ provider: p, default_model: DEFAULT_MODELS[p as keyof typeof DEFAULT_MODELS],
+    vision: true, vision_model: p === "cf" ? CF_VISION_DEFAULT : DEFAULT_MODELS[p as keyof typeof DEFAULT_MODELS] })),
+    image_limits: { per_request: MAX_IMAGES, max_kb: MAX_IMAGE_BYTES / 1024, types: ["image/jpeg", "image/png"] } };
 }
 
 export async function chat(env: Env, header: string | undefined, body: any, signal?: AbortSignal) {
@@ -82,11 +101,27 @@ export async function chat(env: Env, header: string | undefined, body: any, sign
   if (!hasKey(env, prov)) throw new HTTPException(503, { message: `TriAI에 ${prov} 키가 없어요` });
   // 메시지 정리
   const raw = Array.isArray(body?.messages) ? body.messages : typeof body?.prompt === "string" ? [{ role: "user", content: body.prompt }] : [];
-  const messages: P.Msg[] = raw.slice(-60).map((m: any) => ({ role: m?.role === "assistant" ? "assistant" : "user", content: String(m?.content ?? "") }));
+  let nImg = 0;
+  const messages: P.Msg[] = raw.slice(-60).map((m: any) => {
+    const role = m?.role === "assistant" ? "assistant" : "user";
+    if (!Array.isArray(m?.content)) return { role, content: String(m?.content ?? "") };
+    // 조각 배열: {"type":"text","text":…} · {"type":"image","media_type":"image/jpeg","data":"<base64>"}
+    const texts: string[] = [], images: string[] = [];
+    for (const part of m.content) {
+      if (part?.type === "text") texts.push(String(part.text ?? ""));
+      else if (part?.type === "image") {
+        if (role !== "user") throw new HTTPException(400, { message: "그림은 user 메시지에만 넣을 수 있어요" });
+        images.push(checkImage(part)); nImg++;
+      } else throw new HTTPException(400, { message: `모르는 조각 type '${String(part?.type).slice(0, 20)}' — text 또는 image` });
+    }
+    return { role, content: texts.join("\n"), ...(images.length ? { images } : {}) };
+  });
+  if (nImg > MAX_IMAGES) throw new HTTPException(400, { message: `그림은 요청 1번에 ${MAX_IMAGES}장까지` });
   if (!messages.length || messages[messages.length - 1].role !== "user") throw new HTTPException(400, { message: "messages의 마지막은 user여야 해요 (또는 prompt 하나)" });
   const chars = messages.reduce((n, m) => n + m.content.length, 0) + String(body?.system || "").length;
   if (chars > MAX_INPUT_CHARS) throw new HTTPException(413, { message: `입력이 너무 길어요 (${MAX_INPUT_CHARS.toLocaleString()}자까지)` });
-  const model = String(body?.model || DEFAULT_MODELS[prov as keyof typeof DEFAULT_MODELS]).slice(0, 120);
+  const model = String(body?.model || (nImg && prov === "cf" ? CF_VISION_DEFAULT : DEFAULT_MODELS[prov as keyof typeof DEFAULT_MODELS])).slice(0, 120);
+  if (nImg && !P.canSee(prov, model)) throw new HTTPException(400, { res: Response.json({ error: "no_vision", detail: `이 모델(${model})은 그림을 못 봄. 그림을 볼 수 있는 모델: ${visionModels(prov).join(", ")}` }, { status: 400 }) });
   const maxTok = Math.max(16, Math.min(Number(body?.max_tokens) || 2048, MAX_TOKENS_CAP));
   // 예산: 토큰 하루 한도 · 주인 하루 한도 · 전체 한도
   const estRaw = P.estimateCost(model, { in: Math.ceil(chars / 2), cached: 0, write: 0, out: maxTok }, prov);
@@ -94,7 +129,7 @@ export async function chat(env: Env, header: string | undefined, body: any, sign
     const known = Object.keys(PRICING).filter(k => !k.startsWith("_") && k.startsWith(prov === "claude" ? "claude-" : prov === "gpt" ? "gpt-" : "gemini-"));
     throw new HTTPException(400, { message: `'${model}'은 가격표에 없어서 한도를 계산할 수 없어요. 쓸 수 있는 모델: ${known.join(", ")}` });
   }
-  const est = estRaw || 0;
+  const est = (estRaw || 0) + (nImg ? (P.estimateCost(model, { in: IMG_TOKENS_EST * nImg, cached: 0, write: 0, out: 0 }, prov) || 0) : 0);   // 그림 토큰 (넉넉히 추정)
   const tSpent = await tokSpent(env, tok.id);
   if (tSpent + est > tok.daily_limit) throw new HTTPException(402, { message: `이 토큰의 오늘 한도($${tok.daily_limit.toFixed(2)})에 닿았어요 (쓴 돈 $${tSpent.toFixed(4)}, 이번 예상 $${est.toFixed(4)})` });
   const oSpent = await spentToday(env, owner.name);

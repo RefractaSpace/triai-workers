@@ -28,7 +28,7 @@ const PUBLIC = new Set(["/gw/login", "/gw/setup", "/gw/ping", "/sw.js", "/static
 const RUNS = new Map<string, AbortController>();   // 실행 번호 → 중지 (같은 인스턴스 안에서만; 창을 닫아도 스트림이 끊기면 멈춤)
 
 app.onError((err, c) => {
-  if (err instanceof HTTPException) return c.json({ detail: err.message }, err.status);
+  if (err instanceof HTTPException) return err.res ? err.getResponse() : c.json({ detail: err.message }, err.status);
   console.error(err);
   return c.json({ detail: `서버 오류: ${P.redact(String(err)).slice(0, 200)}` }, 500);
 });
